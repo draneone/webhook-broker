@@ -113,15 +113,17 @@ func (w *Worker) earliestDelta(retryAttempt uint) time.Duration {
 	return computeEarliestDelta(retryAttempt, w.brokerConfig)
 }
 
-var callConsumer = func(httpClient *http.Client, requestID string, logger zerolog.Logger, job *Job) (err error) {
+var callConsumer = func(httpClient *http.Client, requestID string, logger zerolog.Logger, job *Job, connectionConfig config.ConsumerConnectionConfig) (err error) {
 	var req *http.Request
 	req, err = http.NewRequest(http.MethodPost, job.Data.Listener.CallbackURL, strings.NewReader(job.Data.Message.Payload))
 	if err == nil {
 		defer req.Body.Close()
 		req.Header.Set(headerContentType, job.Data.Message.ContentType)
 		req.Header.Set(headerBrokerPriority, strconv.Itoa(int(job.Priority)))
-		req.Header.Set(headerConsumerToken, job.Data.Listener.Token)
+		req.Header.Set(connectionConfig.GetTokenRequestHeaderName(), job.Data.Listener.Token)
 		req.Header.Set(headerRequestID, requestID)
+		req.Header.Set("User-Agent", connectionConfig.GetUserAgent())
+
 		var resp *http.Response
 		resp, err = httpClient.Do(req)
 		if err == nil {
@@ -152,7 +154,7 @@ func (w *Worker) executeJob(requestID string, logger zerolog.Logger, job *Job) (
 			err = errors.New("panic in executeJob")
 		}
 	}()
-	return callConsumer(w.httpClient, requestID, logger, job)
+	return callConsumer(w.httpClient, requestID, logger, job, w.consumerConnectionConfig)
 }
 
 // IsWorking retrieves whether the work is active

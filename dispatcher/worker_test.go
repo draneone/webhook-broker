@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"bytes"
 	"errors"
+	"github.com/newscred/webhook-broker/config"
 	"net/http"
 	"testing"
 	"time"
@@ -40,7 +41,7 @@ func TestDeliverJob_MarkDead(t *testing.T) {
 		callConsumer = oldCallConsumer
 	}()
 	expectedErr := errors.New("Expected error")
-	callConsumer = func(httpClient *http.Client, requestID string, logger zerolog.Logger, job *Job) (err error) {
+	callConsumer = func(httpClient *http.Client, requestID string, logger zerolog.Logger, job *Job, connectionConfig config.ConsumerConnectionConfig) (err error) {
 		return expectedErr
 	}
 	deliverJob(worker, NewJob(inflightJob))
@@ -112,7 +113,7 @@ func TestCallConsumerPanic(t *testing.T) {
 	defer func() {
 		callConsumer = oldCallConsumer
 	}()
-	callConsumer = func(httpClient *http.Client, requestID string, logger zerolog.Logger, job *Job) (err error) {
+	callConsumer = func(httpClient *http.Client, requestID string, logger zerolog.Logger, job *Job, connectionConfig config.ConsumerConnectionConfig) (err error) {
 		panic("test panic")
 	}
 	deliverJob(worker, NewJob(inflightJob))
